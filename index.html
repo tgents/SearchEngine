@@ -1,0 +1,131 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>Best Search Engine</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+    <script src="https://code.jquery.com/jquery-2.2.3.min.js" integrity="sha256-a23g1Nt4dtEYOj7bR+vTu7+T8VP13humZFBJNIYoEJo=" crossorigin="anonymous"></script>
+</head>
+<body style="margin: 0px auto; width:800px;">
+    <h1 style="text-align: center;">Wiki-CNN-NBA Frankensearch</h1>
+    <div class="input-group">
+        <input id="search" type="text" class="form-control" placeholder="Search something..." onfocusout='$("#suggestions").html("");'>
+        <span class="input-group-btn">
+            <button class="btn btn-default" type="button" onclick="search();">Search</button>
+        </span>
+    </div>
+    <div id="suggestions" style="position:absolute; width:800px"></div>
+    <div id="player"></div>
+    <br />
+    <div id="printhere"></div>
+    <br />
+    <script>
+        function search() {
+            $("#player").html("");
+            $("#printhere").html("");
+            var query = $('#search').val();
+            $.ajax({
+                url: "http://ec2-54-201-56-79.us-west-2.compute.amazonaws.com/findplayer.php",
+                data: { 'player': query },
+                contentType: "application/json; charset=utf-8",
+                dataType: "jsonp",
+                success: function (msg) {
+                    console.log(msg);
+                    var obj = JSON.parse(JSON.stringify(msg))[0];
+                    console.log(obj);
+                    var playertext = "";
+                    playertext += "<h3>" + obj["Name"] + "</h3>";
+                    playertext += "<p> Team: " + obj["Team"] + "<br>";
+                    playertext += "Games Played: " + obj['GP'] + "<br>";
+                    playertext += "Shots/game (Made/Attempts): " + obj['FG_M'] + "/" + obj['FG_A'] + "<br>";
+                    playertext += "Threes/game (Made/Attempts): " + obj['3PT_M'] + "/" + obj['3PT_A'] + "<br>";
+                    playertext += "Points/game: " + obj['PPG'] + "<br>";
+                    playertext += "Rebounds/game: " + obj['Rebounds_Tot'] + "<br>";
+                    playertext += "Assists/game: " + obj['Ast'];
+                    playertext += "</p>";
+                    $("#player").html(playertext);
+                },
+                error: function (msg) {
+                    alert(JSON.stringify(msg));
+                }
+            });
+            $.ajax({
+                type: "POST",
+                url: "RoboTom.asmx/getUrl",
+                data: JSON.stringify({ title: query }),
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+                success: function (msg) {
+                    var statsupdate = "";
+                    $.each(msg.d, function (index, element) {
+                        if (element.trim() != "") {
+                            statsupdate += "<li class=\"list-group-item\">" + element + "</li>";
+                        }
+
+                    });
+                    $("#printhere").html(statsupdate);
+                },
+                error: function (msg) {
+                    console.log(msg)
+                }
+            });
+        }
+
+        function onClick() {
+            var query = $('#search').val();
+            $.ajax({
+                type: "POST",
+                url: "TrieService.asmx/SearchTrie",
+                data: JSON.stringify({ searchString: query }),
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+                success: function (msg) {
+                    //console.log(JSON.parse(msg.d));
+                    var resultlist = "<ul class=\"list-group\">";
+                    var resultsArr = JSON.parse(msg.d);
+                    $.each(resultsArr, function (index, element) {
+                        if (index < 10) {
+                            resultlist += "<li class=\"list-group-item\">";
+                            resultlist += element.split("_").join(" ");
+                            //console.log(element);
+                            resultlist += "</li>";
+                        }
+                    })
+                    resultlist += "</ul>";
+                    if (resultsArr == 0) {
+                        $("#suggestions").html("");
+                    } else {
+                        $("#suggestions").html(resultlist);
+                    }
+                },
+                error: function (msg) {
+                    console.log(msg);
+                }
+            });
+        }
+
+        $("#search").keyup(function (e) {
+            if ($('#search').val() == "") {
+                $("#suggestions").html("");
+            } else if (e.keyCode == 13) {
+                $("#suggestions").html("");
+                search();
+            } else {
+                $("#player").html("");
+                $("#printhere").html("");
+                onClick();
+            }
+        });
+    </script>
+    <footer>
+        <form action="https://www.paypal.com/cgi-bin/webscr" method="post" target="_top" style="text-align:center">
+            Servers are hard to maintain! Please donate to keep this service up!
+            <br />
+            <input type="hidden" name="cmd" value="_s-xclick">
+            <input type="hidden" name="encrypted" value="-----BEGIN PKCS7-----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-----END PKCS7-----">
+            <input type="image" src="https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif" border="0" name="submit" alt="PayPal - The safer, easier way to pay online!">
+            <img alt="" border="0" src="https://www.paypalobjects.com/en_US/i/scr/pixel.gif" width="1" height="1">
+        </form>
+    </footer>
+</body>
+</html>

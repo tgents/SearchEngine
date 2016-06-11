@@ -1,0 +1,438 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>CNN Crawler</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+    <script src="https://code.jquery.com/jquery-2.2.3.min.js" integrity="sha256-a23g1Nt4dtEYOj7bR+vTu7+T8VP13humZFBJNIYoEJo=" crossorigin="anonymous"></script>
+    <script src="http://d3js.org/d3.v3.min.js"></script>
+    <style type="text/css">
+        path {
+            stroke: steelblue;
+            stroke-width: 2;
+            fill: none;
+        }
+
+        line {
+            stroke: black;
+        }
+
+        text {
+            font-family: Arial;
+            font-size: 9pt;
+        }
+    </style>
+
+</head>
+<body style="margin: 0px auto; width:800px;">
+    <h1 style="text-align: center;">CNN Crawler Admin Panel</h1>
+
+    <div class="row" style="padding-right: 15px; padding-left: 15px">
+        <ul id="stats" class="list-group col-md-4">
+            <b>Stats:</b>
+            <li class="list-group-item">Memory Available:</li>
+            <li class="list-group-item">CPU Usage:</li>
+            <li class="list-group-item">Queue Size:</li>
+            <li class="list-group-item">Table Size:</li>
+            <li class="list-group-item">Total Visited:</li>
+        </ul>
+        <div class="form-group col-md-8">
+            <b>Console:</b>
+            <textarea id="printhere" class="form-control" rows="9" style="resize: none; height: 100%;" readonly></textarea>
+        </div>
+    </div>
+    <br>
+    <div class="input-group row" id="actions">
+        <span class="input-group-btn">
+            <button class="btn btn-primary" type="button" onclick="buildTrie();">Build Trie</button>
+            <button class="btn btn-primary" type="button" onclick="downloadWiki();">Download Wiki</button>
+            <button class="btn btn-danger" type="button" onclick="deleteTrie();">Delete Trie</button>     
+            <button class="btn btn-info" type="button" onclick="checkWiki();">Check Wiki</button>
+            <button class="btn btn-info" type="button" onclick="checkTrie();">Check Trie</button>       
+            <button class="btn btn-info" type="button" onclick="refreshUrls();">Refresh Urls</button>
+            <button class="btn btn-info" type="button" onclick="status();">Crawler Status</button>
+        </span>
+    </div>
+    <br>
+    <div class="input-group" style="padding-right: 15px;">
+        <input id="sitecrawl" type="text" class="form-control" placeholder="http://cnn.com" value="http://cnn.com">
+        <span class="input-group-btn">
+            <button class="btn btn-success" type="button" onclick="start();">Start Crawl</button>
+            <button class="btn btn-default" type="button" onclick="createTables();">Create Tables</button>
+            <button class="btn btn-warning" type="button" onclick="clearTables();">Clear Tables</button>
+            <button class="btn btn-danger" type="button" onclick="stop();">Stop Crawl</button>
+        </span>
+    </div>
+    <br>
+    <div class="row" style="padding-right: 15px; padding-left: 15px">
+        <div class="col-md-6">
+            <b>CPU Usage:</b>
+            <div id="cpugraph"></div>
+        </div>
+        <div class="col-md-6">
+            <b>Memory Available</b>
+            <div id="memgraph"></div>
+        </div>
+    </div>
+    <b>Last Visited:</b>
+    <ul id="insert" class="list-group" style="max-height:200px;overflow:hidden; overflow-y:auto;"></ul>
+    <b>Errors:</b>
+    <ul id="errors" class="list-group" style="max-height:200px;overflow:hidden; overflow-y:auto;"></ul>
+
+    <script>
+        var memdata = [];
+        var cpudata = [];
+
+        for (var i = 0; i < 25; i++) {
+            memdata.push(0);
+            cpudata.push(0);
+        }
+
+        function deleteTrie() {
+            $("#printhere").val("Deleting Trie..." + "\n" + $('#printhere').val())
+            $.ajax({
+                type: "POST",
+                url: "TrieService.asmx/RemoveTrie",
+                data: "",
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+                success: function (msg) {
+                    console.log(msg);
+                    $("#printhere").val(msg.d + "\n" + $('#printhere').val())
+                },
+                error: function (msg) {
+                    console.log(msg);
+                }
+            });
+        }
+
+        function checkWiki() {
+            $.ajax({
+                type: "POST",
+                url: "TrieService.asmx/CheckWiki",
+                data: "",
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+                success: function (msg) {
+                    console.log(msg);
+                    $("#printhere").val(msg.d + "\n" + $('#printhere').val())
+                },
+                error: function (msg) {
+                    console.log(msg);
+                }
+            });
+        }
+
+        function checkTrie() {
+            $.ajax({
+                type: "POST",
+                url: "TrieService.asmx/CheckTrie",
+                data: "",
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+                success: function (msg) {
+                    console.log(msg);
+                    $("#printhere").val(msg.d + "\n" + $('#printhere').val())
+                },
+                error: function (msg) {
+                    console.log(msg);
+                }
+            });
+            $.ajax({
+                type: "POST",
+                url: "RoboTom.asmx/getTrienhardt",
+                data: "",
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+                success: function (msg) {
+                    console.log(msg);
+                    $("#printhere").val(msg.d + "\n" + $('#printhere').val())
+                },
+                error: function (msg) {
+                    console.log(msg);
+                }
+            });
+        }
+
+        function downloadWiki() {
+            $("#printhere").val("Downloading Wiki..." + "\n" + $('#printhere').val())
+            $.ajax({
+                type: "POST",
+                url: "TrieService.asmx/DownloadWiki",
+                data: "",
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+                success: function (msg) {
+                    console.log(msg);
+                    $("#printhere").val(msg.d + "\n" + $('#printhere').val())
+                },
+                error: function (msg) {
+                    console.log(msg);
+                }
+            });
+        }
+
+        function buildTrie() {
+            $("#printhere").val("Building Trie..." + "\n" + $('#printhere').val())
+            $.ajax({
+                type: "POST",
+                url: "TrieService.asmx/BuildTrie",
+                data: "",
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+                success: function (msg) {
+                    console.log(msg);
+                    $("#printhere").val(msg.d + "\n" + $('#printhere').val())
+                },
+                error: function (msg) {
+                    console.log(msg);
+                }
+            });
+        }
+
+        function status() {
+            $.ajax({
+                type: "POST",
+                url: "RoboTom.asmx/getStatus",
+                data: "",
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+                success: function (msg) {
+                    console.log(msg)
+                    $("#printhere").val(msg.d + "\n" + $('#printhere').val())
+                },
+                error: function (msg) {
+                    console.log(msg)
+                }
+            });
+        }
+        function timer() {
+            $.ajax({
+                type: "POST",
+                url: "RoboTom.asmx/getTimer",
+                data: "",
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+                success: function (msg) {
+                    console.log(msg)
+                    $("#printhere").val(msg.d + "\n" + $('#printhere').val())
+                },
+                error: function (msg) {
+                    console.log(msg)
+                }
+            });
+        }
+
+        function start() {
+            var query = $('#sitecrawl').val();
+            $.ajax({
+                type: "POST",
+                url: "RoboTom.asmx/start",
+                data: JSON.stringify({ url: query }),
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+                success: function (msg) {
+                    console.log(msg)
+                    $("#printhere").val(msg.d + "\n" + $('#printhere').val())
+                },
+                error: function (msg) {
+                    console.log(msg)
+                }
+            });
+        }
+
+        function stop() {
+            $.ajax({
+                type: "POST",
+                url: "RoboTom.asmx/stop",
+                data: "",
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+                success: function (msg) {
+                    console.log(msg)
+                    $("#printhere").val(msg.d + "\n" + $('#printhere').val())
+                },
+                error: function (msg) {
+                    console.log(msg)
+                }
+            });
+        }
+
+        function clearTables() {
+            $.ajax({
+                type: "POST",
+                url: "RoboTom.asmx/clearTables",
+                data: "",
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+                success: function (msg) {
+                    console.log(msg)
+                    $("#printhere").val(msg.d + "\n" + $('#printhere').val())
+                },
+                error: function (msg) {
+                    console.log(msg)
+                }
+            });
+        }
+
+        function createTables() {
+            $.ajax({
+                type: "POST",
+                url: "RoboTom.asmx/createTables",
+                data: "",
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+                success: function (msg) {
+                    console.log(msg)
+                    $("#printhere").val(msg.d + "\n" + $('#printhere').val())
+                },
+                error: function (msg) {
+                    console.log(msg)
+                }
+            });
+        }
+
+        function populateStats() {
+            $.ajax({
+                type: "POST",
+                url: "RoboTom.asmx/getStats",
+                data: "",
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+                success: function (msg) {
+                    memdata.push(msg.d[0] == null ? 0 : msg.d[0]);
+                    cpudata.push(msg.d[1] == null ? 0 : msg.d[1]);
+                    var statsupdate = "<b>Stats:</b>";
+                    statsupdate += "<li class=\"list-group-item\">Memory Available: " + msg.d[0] + "MB</li>";
+                    statsupdate += "<li class=\"list-group-item\">CPU Usage: " + msg.d[1] + "%</li>";
+                    statsupdate += "<li class=\"list-group-item\">Queue Size: " + msg.d[2] + "</li>";
+                    statsupdate += "<li class=\"list-group-item\">Table Size: " + msg.d[3] + "</li>";
+                    statsupdate += "<li class=\"list-group-item\">Total Visited: " + msg.d[4] + "</li>";
+                    $("#stats").html(statsupdate);
+                },
+                error: function (msg) {
+                    console.log(msg)
+                }
+            });
+
+        }
+
+        function refreshUrls() {
+            $("#printhere").val("Refreshing last and error urls..." + "\n" + $('#printhere').val());
+            $.ajax({
+                type: "POST",
+                url: "RoboTom.asmx/getLastTen",
+                data: "",
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+                success: function (msg) {
+                    var statsupdate = "";
+                    $.each(msg.d.split(';'), function (index, element) {
+                        console.log(element);
+                        if (element.trim() != "") {
+                            statsupdate += "<li class=\"list-group-item\">" + element + "</li>";
+                        }
+
+                    });
+                    $("#insert").html(statsupdate);
+                },
+                error: function (msg) {
+                    console.log(msg)
+                }
+            });
+            $.ajax({
+                type: "POST",
+                url: "RoboTom.asmx/getErrors",
+                data: "",
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+                success: function (msg) {
+                    console.log(msg.d);
+                    var statsupdate = "";
+                    $.each(msg.d, function (index, element) {
+                        console.log(element);
+                        if (element.trim() != "") {
+                            statsupdate += "<li class=\"list-group-item\">" + element + "</li>";
+                        }
+
+                    });
+                    $("#errors").html(statsupdate);
+                },
+                error: function (msg) {
+                    console.log(msg)
+                }
+            });
+        }
+
+        function drawgraph(data, graph, max) {
+            var w = 400,
+            h = 200,
+            margin = 20,
+            y = d3.scale.linear().domain([0, max]).range([0 + margin, h - margin]),
+            x = d3.scale.linear().domain([0, 30]).range([0 + margin, w - margin]);
+            var vis = d3.select(graph)
+                .append("svg:svg")
+                .attr("width", w)
+                .attr("height", h);
+
+            var g = vis.append("svg:g")
+                .attr("transform", "translate(0, 200)");
+
+            var line = d3.svg.line()
+                .x(function (d, i) { return x(i); })
+                .y(function (d) { return -1 * y(d); });
+
+            g.append("svg:path").attr("d", line(data));
+
+            g.append("svg:line")
+                .attr("x1", x(0))
+                .attr("y1", -1 * y(0))
+                .attr("x2", x(w))
+                .attr("y2", -1 * y(0));
+
+            g.append("svg:line")
+                .attr("x1", x(0))
+                .attr("y1", -1 * y(0))
+                .attr("x2", x(0))
+                .attr("y2", -1 * y(max));
+
+            g.selectAll(".yLabel")
+                .data(y.ticks(4))
+                .enter().append("svg:text")
+                .attr("class", "yLabel")
+                .text(String)
+                .attr("x", 0)
+                .attr("y", function (d) { return -1 * y(d) })
+                .attr("text-anchor", "right")
+                .attr("dy", 4);
+
+            g.selectAll(".yTicks")
+                .data(y.ticks(4))
+                .enter().append("svg:line")
+                .attr("class", "yTicks")
+                .attr("y1", function (d) { return -1 * y(d); })
+                .attr("x1", x(-0.3))
+                .attr("y2", function (d) { return -1 * y(d); })
+                .attr("x2", x(0))
+        }
+        $(document).ready(function () {
+            function recurse() {
+                populateStats();
+                if (cpudata.length > 28) {
+                    cpudata.shift();
+                }
+                if (memdata.length > 28) {
+                    memdata.shift();
+                }
+                $("#cpugraph").html("");
+                $("#memgraph").html("");
+                drawgraph(cpudata, "#cpugraph", 100);
+                drawgraph(memdata, "#memgraph", 1000);
+                setTimeout(recurse, 3000);
+            }
+            recurse();
+        });
+
+    </script>
+</body>
+</html>
